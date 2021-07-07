@@ -30,12 +30,13 @@ class Camera
 public:
     // camera Attributes
     glm::vec3 Position;
-    glm::vec3 Front; // Local Z
+    glm::vec3 Forward; // Local Z
     glm::vec3 Up; // Local Y
     glm::vec3 Right; // Local X
+    glm::vec3 WorldRight = glm::vec3(1, 0, 0);
     glm::vec3 WorldUp = glm::vec3(0, 1, 0);
-    glm::vec3 LookAt = glm::vec3(0, 0, 0);
-    glm::quat orientation = glm::quat(0.0f, 0.0f, 0.0f, 1.0f); // XYZW
+    glm::vec3 WorldForward = glm::vec3(0, 0, 1);
+    glm::quat currentRotation = glm::quat(0.0f, 0.0f, 0.0f, 1.0f); // XYZW
     // euler Angles
     float Yaw;
     float Pitch;
@@ -67,7 +68,7 @@ public:
         float yaw = YAW,
         float pitch = PITCH,
         float roll = ROLL
-    ) : Front(glm::vec3(0.0f, 0.0f, -1.0f)),
+    ) : Forward(glm::vec3(0.0f, 0.0f, -1.0f)),
         MovementSpeed(SPEED),
         MouseSensitivity(SENSITIVITY),
         FOV(FIELD_OF_VIEW),
@@ -81,7 +82,7 @@ public:
         Position = position;
         FOV = FOV;
         Up = up;
-        Right = glm::normalize(glm::cross(Front, Up));
+        Right = glm::normalize(glm::cross(Forward, Up));
         Yaw = yaw;
         Pitch = pitch;
         Roll = roll;
@@ -103,5 +104,5 @@ public:
     void GetMatricies(glm::mat4& P, glm::mat4& V);
 
     void OffsetOrientation(float pitch, float yaw, float roll);
-    glm::mat4 GetOrientation() const;
+    glm::mat4 GetOrientation();
 };
