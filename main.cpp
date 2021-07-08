@@ -25,7 +25,7 @@ const unsigned int HEIGHT = 600;
 
 float mixValue = 0.2f;
 
-Camera camera(WIDTH, HEIGHT, glm::vec3(0.0f, 0.0f, 0.0f));
+Camera camera(WIDTH, HEIGHT, glm::vec3(0.0f, 0.0f, -3.0f));
 float lastFrame = 0.0f; // Time of last frame
 float lastX = 400, lastY = 300, yaw = -90.0f, pitch = 0.0f, fov = 45.0;
 
@@ -68,6 +68,7 @@ int main()
     // build and compile our shader zprogram
     // ------------------------------------
     Shader ourShader("resources/shaders/vertex.glsl", "resources/shaders/fragment.glsl");
+    Shader lightingShader("resources/shaders/light-vertex.glsl", "resources/shaders/light-fragment.glsl");
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
@@ -139,6 +140,14 @@ int main()
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
+	unsigned int lightVAO;
+	glGenVertexArrays(1, &lightVAO);
+	glBindVertexArray(lightVAO);
+	// we only need to bind to the VBO, the container's VBO's data already contains the data.
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	// set the vertex attribute 
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
 
     // load and create a texture 
     // -------------------------
@@ -204,10 +213,9 @@ int main()
 
     glm::vec3 cubePositions[] = {
     glm::vec3( 0.0f,  0.0f,  0.0f), 
-    glm::vec3( 3.0f,  0.0f,  0.0f), 
-    glm::vec3( 0.0f,  3.0f,  0.0f), 
+    glm::vec3( 1.0f,  0.0f,  0.0f), 
+    glm::vec3( 0.0f,  2.0f,  0.0f), 
     glm::vec3( 0.0f,  0.0f,  3.0f),  
-    glm::vec3(-1.0f,  0.0f,  0.0f), 
 	};
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  
@@ -242,6 +250,8 @@ int main()
 
         // render container
         ourShader.use(); // don't forget to activate/use the shader before setting uniforms!
+		ourShader.setVec3("objectColor", 1.0f, 0.5f, 0.31f);
+		ourShader.setVec3("lightColor",  1.0f, 1.0f, 1.0f);
 
 		ourShader.setFloat("mixValue", mixValue);
 
@@ -258,12 +268,26 @@ int main()
         for(auto& cube : cubePositions)
         {
 			glm::mat4 model = glm::mat4(1.0f);
-			model = glm::translate(model, cube);
+			model = glm::translate(model, cube * -1.f);
             //model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, ((float)i)/10.0f ));  
 			ourShader.setMat4("model", model);
 
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
+
+        // don't forget to use the corresponding shader program first (to set the uniform)
+		lightingShader.use();
+		lightingShader.setMat4("projection", projection); 
+        lightingShader.setMat4("view", view);
+        glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
+
+        glm::mat4 model = glm::mat4(1.0f);
+		model = glm::translate(model, lightPos);
+		model = glm::scale(model, glm::vec3(0.2f)); 
+		lightingShader.setMat4("model", model);
+
+        glBindVertexArray(lightVAO);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------

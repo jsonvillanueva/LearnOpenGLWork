@@ -12,13 +12,13 @@ void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime)
 	if (direction == Camera_Movement::BACKWARD)
 		Position -= Forward * velocity;
 	if (direction == Camera_Movement::LEFT)
-		Position -= Right * velocity;
-	if (direction == Camera_Movement::RIGHT)
 		Position += Right * velocity;
+	if (direction == Camera_Movement::RIGHT)
+		Position -= Right * velocity;
 	if (direction == Camera_Movement::UP)
-		Position += Up * velocity;
-	if (direction == Camera_Movement::DOWN)
 		Position -= Up * velocity;
+	if (direction == Camera_Movement::DOWN)
+		Position += Up * velocity;
 	if (direction == Camera_Movement::ROLL_LEFT)
 		OffsetOrientation(0.0f, 0.0f, angular_velocity*deltaTime);
 	if (direction == Camera_Movement::ROLL_RIGHT)
@@ -54,9 +54,9 @@ void Camera::Update() {
 	glm::mat4 rotation = GetOrientation();
 	Right = glm::vec3(rotation[0][0], rotation[1][0], rotation[2][0]);
 	Up = glm::vec3(rotation[0][1], rotation[1][1], rotation[2][1]);
-	Forward = glm::vec3(rotation[0][2], rotation[1][2], rotation[2][2]) * -1.f;
+	Forward = glm::vec3(rotation[0][2], rotation[1][2], rotation[2][2]);
 
-	glm::mat4 translation = glm::translate(glm::mat4(1.0f), Position * -1.f);
+	glm::mat4 translation = glm::translate(glm::mat4(1.0f), Position);
 	view = rotation * translation;
 }
 

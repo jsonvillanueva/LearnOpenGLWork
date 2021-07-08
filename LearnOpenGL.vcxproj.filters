@@ -46,6 +46,9 @@
     <None Include=".gitignore" />
     <None Include="resources\shaders\fragment.glsl" />
     <None Include="resources\shaders\vertex.glsl" />
+    <None Include="resources\shaders\light-vertex.glsl" />
+    <None Include="resources\shaders\light-fragment.glsl" />
+    <None Include="resources\shaders\light-source-frag.glsl" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="resources\textures\awesomeface.png">
