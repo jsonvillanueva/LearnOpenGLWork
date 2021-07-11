@@ -3,6 +3,8 @@
 #include <stb_image.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <iostream>
+#include <glm/gtx/string_cast.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include "Shader.h"
@@ -17,8 +19,8 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 
 
 // settings
-const unsigned int WIDTH = 1920;
-const unsigned int HEIGHT = 1080;
+const unsigned int WIDTH = 800;
+const unsigned int HEIGHT = 600;
 
 float mixValue = 0.2f;
 
@@ -180,6 +182,11 @@ int main()
         // view/projection transformations
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
+        std::cout << "LightPos: " << glm::to_string(lightPos) << std::endl;
+        std::cout << "Pos: " << glm::to_string(camera.Position) << std::endl;
+        std::cout << "Forward: " << glm::to_string(camera.Front) << std::endl;
+        std::cout << "Projection: " << glm::to_string(projection) << std::endl;
+        std::cout << "View: " << glm::to_string(view) << std::endl;
         ourShader.setMat4("projection", projection);
         ourShader.setMat4("view", view);
 
