@@ -18,12 +18,12 @@ enum class Camera_Movement {
 };
 
 // Default camera values
-const float YAW = 0.0f;
+const float YAW = -90.0f;
 const float PITCH = 0.0f;
 const float ROLL = 0.0f;
 const float SPEED = 2.5f;
 const float SENSITIVITY =  0.1f;
-const float FIELD_OF_VIEW = 70.0f;
+const float FIELD_OF_VIEW = 90.0f;
 
 class Camera
 {
@@ -60,33 +60,24 @@ public:
 
 
     // constructor with vectors
-    Camera(
-        int width,
-        int height,
-        glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f),
-        float yaw = YAW,
-        float pitch = PITCH,
-        float roll = ROLL
-    ) : Forward(glm::vec3(0.0f, 0.0f, -1.0f)),
-        MovementSpeed(SPEED),
-        MouseSensitivity(SENSITIVITY),
-        FOV(FIELD_OF_VIEW),
-        VP(glm::mat4(1.0f)),
-        projection(glm::mat4(1.0f)),
-        view(glm::mat4(1.0f))
+    Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH) : Forward(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), FOV(FIELD_OF_VIEW)
     {
-        window_width = width;
-        window_height = height;
-        aspect = float(width) / float(height);
         Position = position;
-        FOV = FOV;
-        Up = up;
-        Right = glm::normalize(glm::cross(Forward, Up));
+        WorldUp = up;
         Yaw = yaw;
         Pitch = pitch;
-        Roll = roll;
+        updateCameraVectors();
     }
+    // constructor with scalar values
+    Camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch) : Forward(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), FOV(FIELD_OF_VIEW)
+    {
+        Position = glm::vec3(posX, posY, posZ);
+        WorldUp = glm::vec3(upX, upY, upZ);
+        Yaw = yaw;
+        Pitch = pitch;
+        updateCameraVectors();
+    }
+
 
     // processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
     void ProcessKeyboard(Camera_Movement direction, float deltaTime);
@@ -97,9 +88,10 @@ public:
 
     // processes input received from a mouse scroll-wheel event. Only requires input on the vertical wheel-axis
     void ProcessMouseScroll(float yoffset);
-    void Reset();
     void SetViewport(int width, int height);
+    void updateCameraVectors();
     void Update();
+    glm::mat4 GetViewMatrix();
 
     void GetMatricies(glm::mat4& P, glm::mat4& V);
 

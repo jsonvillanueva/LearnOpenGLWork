@@ -1,7 +1,9 @@
 #include "Camera.h"
-#include <iostream>
-#include "glm/ext.hpp"
-#include <glm/gtx/string_cast.hpp>
+
+glm::mat4 Camera::GetViewMatrix()
+{
+	return glm::lookAt(Position, Position + Forward, Up);
+}
 
 void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime)
 {
@@ -11,18 +13,36 @@ void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime)
 		Position += Forward * velocity;
 	if (direction == Camera_Movement::BACKWARD)
 		Position -= Forward * velocity;
-	if (direction == Camera_Movement::LEFT)
-		Position += Right * velocity;
 	if (direction == Camera_Movement::RIGHT)
+		Position += Right * velocity;
+	if (direction == Camera_Movement::LEFT)
 		Position -= Right * velocity;
 	if (direction == Camera_Movement::UP)
-		Position -= Up * velocity;
-	if (direction == Camera_Movement::DOWN)
 		Position += Up * velocity;
-	if (direction == Camera_Movement::ROLL_LEFT)
-		OffsetOrientation(0.0f, 0.0f, angular_velocity*deltaTime);
-	if (direction == Camera_Movement::ROLL_RIGHT)
-		OffsetOrientation(0.0f, 0.0f, -angular_velocity*deltaTime);
+	if (direction == Camera_Movement::DOWN)
+		Position -= Up * velocity;
+	//if (direction == Camera_Movement::ROLL_LEFT)
+	//	OffsetOrientation(0.0f, 0.0f, angular_velocity*deltaTime);
+	//if (direction == Camera_Movement::ROLL_RIGHT)
+	//	OffsetOrientation(0.0f, 0.0f, -angular_velocity*deltaTime);
+}
+
+void Camera::ProcessMouseMovement(float xoffset, float yoffset)
+{
+	xoffset *= MouseSensitivity;
+	yoffset *= MouseSensitivity;
+
+	Yaw   += xoffset;
+	Pitch += yoffset;
+
+	// make sure that when pitch is out of bounds, screen doesn't get flipped
+	if (Pitch > 89.0f)
+		Pitch = 89.0f;
+	if (Pitch < -89.0f)
+		Pitch = -89.0f;
+
+	// update Front, Right and Up Vectors using the updated Euler angles
+	updateCameraVectors();
 }
 
 void Camera::ProcessMouseScroll(float yoffset)
@@ -34,12 +54,17 @@ void Camera::ProcessMouseScroll(float yoffset)
 		FOV = 110.0f; 
 }
 
-void Camera::ProcessMouseMovement(float xoffset, float yoffset)
+void Camera::updateCameraVectors()
 {
-	xoffset *= MouseSensitivity;
-	yoffset *= MouseSensitivity;
-
-	OffsetOrientation(xoffset, yoffset, 0);
+	// calculate the new Front vector
+	glm::vec3 front;
+	front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
+	front.y = sin(glm::radians(Pitch));
+	front.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
+	Forward = glm::normalize(front);
+	// also re-calculate the Right and Up vector
+	Right = glm::normalize(glm::cross(Forward, WorldUp));  // normalize the vectors, because their length gets closer to 0 the more you look up or down which results in slower movement.
+	Up    = glm::normalize(glm::cross(Right, Forward));
 }
 
 void Camera::SetViewport(int width, int height) {
@@ -47,7 +72,6 @@ void Camera::SetViewport(int width, int height) {
 	window_height = height;
 	aspect = float(width) / float(height);
 }
-
 
 void Camera::Update() {
 	projection = glm::perspective(glm::radians(FOV), aspect, near_clip, far_clip);
@@ -60,6 +84,7 @@ void Camera::Update() {
 	view = rotation * translation;
 }
 
+
 void Camera::GetMatricies(glm::mat4 &P, glm::mat4 &V) {
 	P = projection;
 	V = view;
@@ -67,14 +92,23 @@ void Camera::GetMatricies(glm::mat4 &P, glm::mat4 &V) {
 
 void Camera::OffsetOrientation(float yaw, float pitch, float roll)
 {
-	glm::quat rotationChange  = glm::angleAxis(glm::radians(-pitch), WorldRight);
-	rotationChange *= glm::angleAxis(glm::radians(-yaw), WorldUp);
-	rotationChange *= glm::angleAxis(glm::radians(-roll), WorldForward);
-	currentRotation = glm::normalize(rotationChange * currentRotation);
+	Yaw -= yaw;
+	Pitch -= pitch;
+	Roll -= roll;
 }
 
 glm::mat4 Camera::GetOrientation()
 {
-    return glm::mat4_cast(currentRotation);
+	glm::quat q = glm::angleAxis(glm::radians(Pitch), glm::vec3(1,0,0));
+
+	q= q * glm::angleAxis(glm::radians(Yaw), glm::vec3(0,1,0));
+	glm::vec3 tmp_forward = q * WorldForward;
+	q = q* glm::angleAxis(glm::radians(Roll), glm::normalize(tmp_forward));
+
+	Right = WorldRight * q;
+	Up =  WorldUp * q;
+	Forward = -WorldForward * q;
+
+    return glm::mat4_cast(q);
 }
 
