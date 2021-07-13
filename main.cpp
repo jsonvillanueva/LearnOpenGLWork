@@ -25,9 +25,7 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 const unsigned int WIDTH = 800;
 const unsigned int HEIGHT = 600;
 
-float mixValue = 0.2f;
-
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(WIDTH, HEIGHT, Camera_Mode::FPS, glm::vec3(0.0f, 0.0f, 3.0f));
 float lastFrame = 0.0f; // Time of last frame
 float lastX = 400, lastY = 300;
 
@@ -177,6 +175,7 @@ int main()
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        camera.Update();
         // be sure to activate shader when setting uniforms/drawing objects
         ourShader.use();
         ourShader.setVec3("objectColor", 1.0f, 0.5f, 0.31f);
@@ -185,9 +184,8 @@ int main()
         ourShader.setVec3("viewPos", camera.Position);
 
         // view/projection transformations
-		glm::mat4 projection = glm::perspective(glm::radians(camera.FOV), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
-        ourShader.setMat4("projection", projection);
+        ourShader.setMat4("projection", camera.projection);
         ourShader.setMat4("view", view);
 
         // world transformation
@@ -201,7 +199,7 @@ int main()
 
         // also draw the lamp object
         lightingShader.use();
-        lightingShader.setMat4("projection", projection);
+        lightingShader.setMat4("projection", camera.projection);
         lightingShader.setMat4("view", view);
         model = glm::mat4(1.0f);
         model = glm::translate(model, lightPos);
@@ -228,7 +226,7 @@ int main()
     glfwTerminate();
     return 0;
 
-   }
+}
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
@@ -236,6 +234,10 @@ void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+        camera.ChangeMode(Camera_Mode::FPS);
+    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+        camera.ChangeMode(Camera_Mode::DOF);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camera.ProcessKeyboard(Camera_Movement::FORWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -262,7 +264,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     // make sure the viewport matches the new window dimensions; note that width and 
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
-    camera.SetViewport(width, height);
 }
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
@@ -274,12 +275,12 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
         firstMouse = false;
     }
   
-    float xoffset = lastX - xpos;
+    float xoffset = xpos - lastX;
     float yoffset = lastY - ypos; 
     lastX = xpos;
     lastY = ypos;
 
-    camera.ProcessMouseMovement(xoffset, yoffset);
+    camera.ProcessMouseMovement(xoffset, yoffset, deltaTime);
 }  
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)

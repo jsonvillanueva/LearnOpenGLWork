@@ -5,9 +5,41 @@ glm::mat4 Camera::GetViewMatrix()
 	return glm::lookAt(Position, Position + Forward, Up);
 }
 
+void Camera::ChangeMode(Camera_Mode mode)
+{
+	if (Mode == mode)
+		return;
+
+	double siny_cosp;
+	double cosy_cosp;
+	double sinp;
+	switch (mode) {
+	case Camera_Mode::FPS:
+		std::cout << "FPS mode enabled\n";
+		glm::quat q = currentRotation;
+		sinp = 2.0 * (q.w*q.x - q.z*q.y);
+		if (std::abs(sinp) >= 1)
+			Pitch = -glm::degrees(std::copysign(glm::pi<double>() / 2.0, sinp)); // use 90 degrees if out of range
+		else
+			Pitch = -glm::degrees(std::asin(sinp));
+
+		siny_cosp = 2.0 * (q.w * q.y + q.z * q.x);
+		cosy_cosp = q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z;
+		Yaw = glm::degrees(std::atan2(siny_cosp, cosy_cosp));
+		Yaw -= 90;
+		Roll = 0;
+		break;
+	case Camera_Mode::DOF:
+		std::cout << "DOF mode enabled\n";
+		currentRotation = glm::normalize(glm::toQuat(glm::lookAt(Position, Position + Forward, Up)));
+		break;
+	}
+	this->Mode = mode;
+
+}
+
 void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime)
 {
-	float angular_velocity = 100.f;
 	float velocity = MovementSpeed * deltaTime;
 	if (direction == Camera_Movement::FORWARD)
 		Position += Forward * velocity;
@@ -21,28 +53,23 @@ void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime)
 		Position += Up * velocity;
 	if (direction == Camera_Movement::DOWN)
 		Position -= Up * velocity;
-	//if (direction == Camera_Movement::ROLL_LEFT)
-	//	OffsetOrientation(0.0f, 0.0f, angular_velocity*deltaTime);
-	//if (direction == Camera_Movement::ROLL_RIGHT)
-	//	OffsetOrientation(0.0f, 0.0f, -angular_velocity*deltaTime);
+    if (direction == Camera_Movement::ROLL_LEFT)
+    	OffsetRotation(0.0f, 0.0f, RollSensitivity*deltaTime);
+    if (direction == Camera_Movement::ROLL_RIGHT)
+    	OffsetRotation(0.0f, 0.0f, -RollSensitivity*deltaTime);
 }
 
-void Camera::ProcessMouseMovement(float xoffset, float yoffset)
+void Camera::ProcessMouseMovement(float xoffset, float yoffset, float deltaTime)
 {
-	xoffset *= MouseSensitivity;
-	yoffset *= MouseSensitivity;
-
-	Yaw   += xoffset;
-	Pitch += yoffset;
-
-	// make sure that when pitch is out of bounds, screen doesn't get flipped
-	if (Pitch > 89.0f)
-		Pitch = 89.0f;
-	if (Pitch < -89.0f)
-		Pitch = -89.0f;
-
-	// update Front, Right and Up Vectors using the updated Euler angles
-	updateCameraVectors();
+	switch (Mode) {
+	case Camera_Mode::FPS:
+		Yaw   += MouseSensitivity*xoffset;
+		Pitch += MouseSensitivity*yoffset;
+		break;
+	case Camera_Mode::DOF:
+    	OffsetRotation(MouseSensitivity*xoffset*deltaTime, MouseSensitivity*yoffset*deltaTime, 0.0f);
+		break;
+	}
 }
 
 void Camera::ProcessMouseScroll(float yoffset)
@@ -52,10 +79,27 @@ void Camera::ProcessMouseScroll(float yoffset)
 		FOV = 1.0f;
 	if (FOV > 110.0f)
 		FOV = 110.0f; 
+	projection = glm::perspective(glm::radians(FOV), aspect, near_clip, far_clip);
 }
 
-void Camera::updateCameraVectors()
+void Camera::Update()
 {
+	switch (Mode) {
+	case Camera_Mode::FPS:
+		updateCameraFPS();
+		break;
+	case Camera_Mode::DOF:
+		updateCameraDOF();
+		break;
+	}
+}
+
+void Camera::updateCameraFPS()
+{
+	if (Pitch > 89.0f)
+		Pitch = 89.0f;
+	if (Pitch < -89.0f)
+		Pitch = -89.0f;
 	// calculate the new Front vector
 	glm::vec3 front;
 	front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
@@ -71,15 +115,14 @@ void Camera::SetViewport(int width, int height) {
 	window_width = width;
 	window_height = height;
 	aspect = float(width) / float(height);
+	projection = glm::perspective(glm::radians(FOV), aspect, near_clip, far_clip);
 }
 
-void Camera::Update() {
-	projection = glm::perspective(glm::radians(FOV), aspect, near_clip, far_clip);
-	glm::mat4 rotation = GetOrientation();
+void Camera::updateCameraDOF() {
+	glm::mat4 rotation = GetRotation();
 	Right = glm::vec3(rotation[0][0], rotation[1][0], rotation[2][0]);
 	Up = glm::vec3(rotation[0][1], rotation[1][1], rotation[2][1]);
-	Forward = glm::vec3(rotation[0][2], rotation[1][2], rotation[2][2]);
-
+	Forward = -glm::vec3(rotation[0][2], rotation[1][2], rotation[2][2]);
 	glm::mat4 translation = glm::translate(glm::mat4(1.0f), Position);
 	view = rotation * translation;
 }
@@ -90,25 +133,15 @@ void Camera::GetMatricies(glm::mat4 &P, glm::mat4 &V) {
 	V = view;
 }
 
-void Camera::OffsetOrientation(float yaw, float pitch, float roll)
+void Camera::OffsetRotation(float yaw, float pitch, float roll)
 {
-	Yaw -= yaw;
-	Pitch -= pitch;
-	Roll -= roll;
+	currentRotation = currentRotation * glm::angleAxis(yaw, glm::normalize(Up));
+	currentRotation = currentRotation * glm::angleAxis(-pitch, glm::normalize(Right));
+	currentRotation = currentRotation * glm::angleAxis(roll, glm::normalize(Forward));
 }
 
-glm::mat4 Camera::GetOrientation()
+glm::mat4 Camera::GetRotation()
 {
-	glm::quat q = glm::angleAxis(glm::radians(Pitch), glm::vec3(1,0,0));
-
-	q= q * glm::angleAxis(glm::radians(Yaw), glm::vec3(0,1,0));
-	glm::vec3 tmp_forward = q * WorldForward;
-	q = q* glm::angleAxis(glm::radians(Roll), glm::normalize(tmp_forward));
-
-	Right = WorldRight * q;
-	Up =  WorldUp * q;
-	Forward = -WorldForward * q;
-
-    return glm::mat4_cast(q);
+    return glm::mat4_cast(currentRotation);
 }
 
