@@ -67,7 +67,6 @@ int main()
         return -1;
     }
 
-    stbi_set_flip_vertically_on_load(true);
 
     glEnable(GL_DEPTH_TEST);  
 
@@ -162,8 +161,8 @@ int main()
 
     // render loop
     // -----------
-	//Model ourModel("resources/models/retopo-rick/source/retoporick.obj");
-    Model ourModel("resources/models/backpack/backpack.obj");
+	Model ourModel("resources/models/picklerick/picklerick.obj");
+    //Model ourModel("resources/models/backpack/backpack.obj");
     glm::vec3 pointLightPositions[] = {
 		glm::vec3(0.7f,  0.2f,  2.0f),
 		glm::vec3(2.3f, -3.3f, -4.0f),
